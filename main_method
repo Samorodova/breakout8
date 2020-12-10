@@ -19,120 +19,172 @@ public class Breakout extends GraphicsProgram {
 
 private RandomGenerator rgen = RandomGenerator.getInstance();
 
-/** Width and height of application window in pixels */
+	/** Width and height of application window in pixels */
 	public static final int APPLICATION_WIDTH = 400;
 	public static final int APPLICATION_HEIGHT = 600;
 
-/** Dimensions of game board (usually the same) */
+	/** Dimensions of game board (usually the same) */
 	private static final int WIDTH = APPLICATION_WIDTH;
 	private static final int HEIGHT = APPLICATION_HEIGHT;
 
-/** Dimensions of the paddle */
+	/** Dimensions of the paddle */
 	private static final int PADDLE_WIDTH = 60;
 	private static final int PADDLE_HEIGHT = 10;
 
-/** Offset of the paddle up from the bottom */
+	/** Offset of the paddle up from the bottom */
 	private static final int PADDLE_Y_OFFSET = 30;
 
-/** Number of bricks per row */
+	/** Number of bricks per row */
 	private static final int NBRICKS_PER_ROW = 10;
 
-/** Number of rows of bricks */
+	/** Number of rows of bricks */
 	private static final int NBRICK_ROWS = 10;
 
-/** Separation between bricks */
+	/** Separation between bricks */
 	private static final int BRICK_SEP = 4;
 
-/** Width of a brick */
-	private static final int BRICK_WIDTH =
-	  (WIDTH - (NBRICKS_PER_ROW - 1) * BRICK_SEP) / NBRICKS_PER_ROW;
+	/** Width of a brick */
+	private static final int BRICK_WIDTH = (WIDTH - (NBRICKS_PER_ROW - 1) * BRICK_SEP) / NBRICKS_PER_ROW;
 
-/** Height of a brick */
+	/** Height of a brick */
 	private static final int BRICK_HEIGHT = 8;
 
-/** Radius of the ball in pixels */
-	private static final int BALL_RADIUS = 10;
+	/** Radius of the ball in pixels */
+	private static final int BALL_RADIUS = 40;
 
-/** Offset of the top brick row from the top */
+	/** Offset of the top brick row from the top */
 	private static final int BRICK_Y_OFFSET = 70;
 
-/** Number of turns */
+	/** Number of turns */
 	private static final int NTURNS = 3;
+	
+	private static double ballSpeed = 26;
+	
+	/** pause between changes*/
+	private static final int PAUSE = 50;
+	
+	private static double xSpeed0 = 0;
+	private static double ySpeed0 = ballSpeed - xSpeed0;
 
-/* Method: run() */
-/** Runs the Breakout program. */
+	/* Method: run() */
+	/** Runs the Breakout program. */
 // just code
 
-public void run() {
-         	/* You fill this in, along with any subsidiary methods */
-         	setup();
- 
-  	}
-/**
- * Setup bricks and a paddle. Add mouse listeners
- */
-  	private void setup() {
-         	this.setSize(APPLICATION_WIDTH, APPLICATION_HEIGHT);
-         	
-         	for(int i = 0; i<NBRICK_ROWS; i++) {
-               	for(int j = 0; j<NBRICKS_PER_ROW; j++) {
-                      	int x = j*(BRICK_WIDTH + BRICK_SEP);
-                      	int y = i*(BRICK_HEIGHT + BRICK_SEP) + BRICK_Y_OFFSET;
-         	brick = new GRect(BRICK_WIDTH, BRICK_HEIGHT); //Our brick
-         	brick.setFilled(true);
-         	if(i==0||i==1)
-               	brick.setColor(Color.RED);
-         	else if(i==2||i==3)
-               	brick.setColor(Color.ORANGE);
-         	else if(i==4||i==5)
-               	brick.setColor(Color.YELLOW);
-         	else if(i==6||i==7)
-               	brick.setColor(Color.GREEN);
-         	else
-               	brick.setColor(Color.CYAN);
-         	add(brick,x,y);
-               	}
-         	}
-         	
-         	paddle = new GRect(PADDLE_WIDTH, PADDLE_HEIGHT); //Our paddle
-         	paddle.setFilled(true);
-         	add(paddle, (WIDTH-PADDLE_WIDTH)/2, HEIGHT-PADDLE_HEIGHT-PADDLE_Y_OFFSET);
+	public void run() {
+		/* You fill this in, along with any subsidiary methods */
+		setup();
+		ballStartMove();
+		while (true) {
+			ballMove();
+			checkForCollisions();
+		}
+		
+	}
+
+	/**
+	 * Setup bricks and a paddle. Add mouse listeners
+	 */
+	private void setup() {
+		this.setSize(APPLICATION_WIDTH, APPLICATION_HEIGHT);
+		for (int i = 0; i < NBRICK_ROWS; i++) {
+			for (int j = 0; j < NBRICKS_PER_ROW; j++) {
+				int x = j * (BRICK_WIDTH + BRICK_SEP);
+				int y = i * (BRICK_HEIGHT + BRICK_SEP) + BRICK_Y_OFFSET;
+				brick = new GRect(BRICK_WIDTH, BRICK_HEIGHT); // Our brick
+				brick.setFilled(true);
+				if (i == 0 || i == 1)
+					brick.setColor(Color.RED);
+				else if (i == 2 || i == 3)
+					brick.setColor(Color.ORANGE);
+				else if (i == 4 || i == 5)
+					brick.setColor(Color.YELLOW);
+				else if (i == 6 || i == 7)
+					brick.setColor(Color.GREEN);
+				else
+					brick.setColor(Color.CYAN);
+				add(brick, x, y);
+			}
+		}
+
+		paddle = new GRect(PADDLE_WIDTH, PADDLE_HEIGHT); // Our paddle
+		paddle.setFilled(true);
+		add(paddle, (WIDTH - PADDLE_WIDTH) / 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET);
 		
 		ball = new GOval(BALL_RADIUS, BALL_RADIUS);
 		ball.setColor(Color.MAGENTA);
 		ball.setFilled(true);
 		ball.setFillColor(Color.MAGENTA);
 		add(ball, (APPLICATION_WIDTH - BALL_RADIUS)/2, (APPLICATION_HEIGHT - BALL_RADIUS)/2);
-         	
-         	addMouseListeners();
-  	}
-  	
-         	
-  	public void mousePressed(MouseEvent e) {
-         	last = new GPoint(e.getPoint());
-         	gobj = getElementAt(last);
-  	}
-  	
-  	public void mouseDragged(MouseEvent e) {
-         	if(gobj==paddle) {
-               	if(paddle.getX()>0&&paddle.getX()<WIDTH-PADDLE_WIDTH) {
-               	gobj.move(e.getX() - last.getX(), 0);
-               	last = new GPoint(e.getPoint());
-               	}
-               	else if(e.getX()<=PADDLE_WIDTH){
-                      	gobj.setLocation(0, HEIGHT-PADDLE_HEIGHT-PADDLE_Y_OFFSET);
-                      	gobj.move(1, 0);
-               	}
-               	else {
-                      	gobj.setLocation(WIDTH-PADDLE_WIDTH-2, HEIGHT-PADDLE_HEIGHT-PADDLE_Y_OFFSET);
-                      	gobj.move(-1, 0);
-               	}
-         	}
-  	}
-  	private GRect brick;
-  	private GRect paddle;
-  	private GPoint last;
-  	private GObject gobj;
+
+		addMouseListeners();
+	}
+	
+	private void ballStartMove() {
+		xSpeed0 = rgen.nextDouble(1.0, ballSpeed);
+		if(rgen.nextBoolean(0.5)) xSpeed0 = -xSpeed0;
+		if(rgen.nextBoolean(0.5)) ySpeed0 = -ySpeed0;
+		if(rgen.nextBoolean(0.5)) ballSpeed = -ballSpeed;
+	}
+	
+	private void ballMove() {
+		ball.move(xSpeed0, ySpeed0);
+		pause(PAUSE);
+	}
+	
+	private void checkForCollisions() {
+		ballOffScreen();
+		ballCollision();
+	}
+
+	private void ballOffScreen() {
+		if (ball.getX() < 0 || ball.getX() + ball.getWidth() >= WIDTH) {
+			xSpeed0 *= -1;
+			//double diff = ball.getX() - (WIDTH - BALL_RADIUS); 
+			//ball.move(diff, 0);
+		} else if (ball.getY() < 0 || ball.getY() + ball.getHeight() >= HEIGHT) {
+			ySpeed0 *= -1;
+			//double diff = ball.getY() - (HEIGHT - BALL_RADIUS); 
+			//ball.move(0, diff);
+		}
+	}
+
+	private void ballCollision() {
+		// 4 point where to check the collision using getCollidingObject()
+	}
+	
+	private GObject getCollidingObject(int x, int y) {
+		GObject object = getElementAt(x, y);
+		if (object != null) return object;
+		else return null;
+	}
+
+	public void mousePressed(MouseEvent e) {
+		last = new GPoint(e.getPoint());
+		gobj = getElementAt(last);
+	}
+
+	public void mouseDragged(MouseEvent e) {
+		if (gobj == paddle) {
+			if (paddle.getX() > 0 && paddle.getX() < WIDTH - PADDLE_WIDTH) {
+				gobj.move(e.getX() - last.getX(), 0);
+				last = new GPoint(e.getPoint());
+			} else if (e.getX() <= PADDLE_WIDTH) {
+				gobj.setLocation(0, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET);
+				gobj.move(1, 0);
+			} else {
+				gobj.setLocation(WIDTH - PADDLE_WIDTH - 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET);
+				gobj.move(-1, 0);
+			}
+		}
+	}
+	
+	
+	private GOval ball;
+	private GRect brick;
+	private GRect paddle;
+	private GPoint last;
+	private GObject gobj;
+
  
 }
  
