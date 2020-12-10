@@ -95,6 +95,12 @@ public void run() {
          	paddle = new GRect(PADDLE_WIDTH, PADDLE_HEIGHT); //Our paddle
          	paddle.setFilled(true);
          	add(paddle, (WIDTH-PADDLE_WIDTH)/2, HEIGHT-PADDLE_HEIGHT-PADDLE_Y_OFFSET);
+		
+		ball = new GOval(BALL_RADIUS, BALL_RADIUS);
+		ball.setColor(Color.MAGENTA);
+		ball.setFilled(true);
+		ball.setFillColor(Color.MAGENTA);
+		add(ball, (APPLICATION_WIDTH - BALL_RADIUS)/2, (APPLICATION_HEIGHT - BALL_RADIUS)/2);
          	
          	addMouseListeners();
   	}
