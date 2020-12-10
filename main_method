@@ -141,7 +141,7 @@ private RandomGenerator rgen = RandomGenerator.getInstance();
 			xSpeed0 *= -1;
 			//double diff = ball.getX() - (WIDTH - BALL_RADIUS); 
 			//ball.move(diff, 0);
-		} else if (ball.getY() < 0 || ball.getY() + ball.getHeight() >= HEIGHT) {
+		} else if (ball.getY() < 0) {
 			ySpeed0 *= -1;
 			//double diff = ball.getY() - (HEIGHT - BALL_RADIUS); 
 			//ball.move(0, diff);
