@@ -193,6 +193,7 @@ private static double ballSpeed = 26;
 				counter++;
 				xSpeed0 *= -1;
 				ySpeed0 *= -1;
+				ballMove();
 				//має відбитись від вищої цеглини або від верхньої стінки, якщо зверху немає цеглин
 			}
 		}
@@ -204,6 +205,7 @@ private static double ballSpeed = 26;
 			if(collider==paddle) {
 				xSpeed0 *= -1;
 				ySpeed0 *= -1;
+				ballMove();
 				//має відбитись від ракетки
 			}
 		}
