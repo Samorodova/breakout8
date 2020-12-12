@@ -1,0 +1,686 @@
+
+/*
+ * File: Breakout.java
+ * -------------------
+ * Name: Anastasiia Syzonenko, Samorodova Sofiia
+ * Section Leader:
+ * 
+ * This file will eventually implement the game of Breakout.
+ */
+
+import acm.graphics.*;
+import acm.program.*;
+import acm.util.*;
+import java.applet.*;
+import java.awt.*;
+import java.awt.event.*;
+
+public class MethodsBreakout extends GraphicsProgram {
+
+	private RandomGenerator rgen = RandomGenerator.getInstance();
+
+	/** Width and height of application window in pixels */
+	public static final int APPLICATION_WIDTH = 600;
+	public static final int APPLICATION_HEIGHT = 600;
+
+	/** Dimensions of game board (usually the same) */
+	private static final int WIDTH = 400;
+	private static final int HEIGHT = 600;
+
+	/** Dimensions of the paddle */
+	private static int PADDLE_WIDTH = 60;
+	private static int PADDLE_HEIGHT = 10;
+
+	/** Offset of the paddle up from the bottom */
+	private static final int PADDLE_Y_OFFSET = 30;
+
+	/** Number of bricks per row */
+	private static final int NBRICKS_PER_ROW = 10;
+
+	/** Number of rows of bricks */
+	private static final int NBRICK_ROWS = 1;
+
+	/** Separation between bricks */
+	private static final int BRICK_SEP = 4;
+
+	/** Width of a brick */
+	private static final int BRICK_WIDTH = (WIDTH - (NBRICKS_PER_ROW - 1) * BRICK_SEP) / NBRICKS_PER_ROW;
+
+	/** Height of a brick */
+	private static final int BRICK_HEIGHT = 8;
+
+	/** Radius of the ball in pixels */
+	private static final int BALL_RADIUS = 15;
+
+	/** Offset of the top brick row from the top */
+	private static final int BRICK_Y_OFFSET = 70;
+
+	/** Number of turns */
+	private static int NTURNS = 3;
+
+	private static double ballSpeed = 3; // it's better not to change the speed
+
+	/** pause between changes */
+	private static int PAUSE = 7;
+
+	/** Ball's speed for X and Y axis */
+	private static double xSpeed0 = 0;
+	private static double ySpeed0 = 0;
+	
+	/** Size of the GRect for level choice */
+	private static int checkBoxSize = 20;
+	
+	/** counter for number of restarts */
+	private static int nOfRestarts = 0;
+	
+	/** X coordinate for the first level box */
+	private int xCoordBox;
+
+	/**
+	 * runs the breakout game,
+	 * appears once - in the beginning of the game
+	 */
+	public void run() {
+			startingScreen();
+			setup();
+			sideBar();
+			addMouseListeners();
+			ballStartMove();
+			levelChoice();
+	}
+	
+	/**
+	 * this method is called by the restarter
+	 */
+	public void levelChoice() {
+		if (nOfRestarts > 0) { // do all below if it is the restart
+			restart.setFillColor(Color.ORANGE); // color was changed to green, put the orange back
+			lives(); // lives were nulled
+			bricks(); // brickes were nulled
+			backCounter = new GLabel(""); // backCounter was deleted
+			backCounter.setFont("SansSerif-18");
+			backCounter.setColor(myCounter);
+			add(backCounter, 490, 180);
+		}
+		while (choice == null){ // works bad, better click only once
+			chooseTheLevel();
+		}
+		if (choice != null) {
+		wholeGame();
+		}
+	}
+	
+	/** 
+	 * main part of the game,
+	 * called by ballOffScreen, when one life is lost
+	 */
+	public void wholeGame() {
+		setupPaddleAndBall(); // set them up here, because variables can be changed in the level choice
+		pause(900); // pause before the ball starts moving
+		while (true) {
+			ballMove(); // one delta for the ball
+			checkForCollisions(); // after move - check, whether there are any collisions
+			if (gameOver() == 0) 
+				continue;
+			else if (gameOver() == 1) { // victory
+				removeBallAndPaddle();
+				victory(); // objects for the victory sign
+				while (restart.getFillColor() != myGreen) { // works bad
+					waitForClick();
+				}
+				remove(victory);
+				loss = null;
+				remove(rVictory);
+				rLoss = null;
+				deleteBeforeRestart();
+				levelChoice();
+			} else if (gameOver() == -1) { // fail
+				loss(); // objects for the lost sign
+				while (restart.getFillColor() != myGreen) { // also works bad
+					waitForClick();
+				}
+				remove(loss);
+				loss = null;
+				remove(rLoss);
+				rLoss = null;
+				deleteBeforeRestart();
+				levelChoice();
+			}
+		}
+	}
+	
+	/**
+	 * things to be deleted to start the game once again:
+	 * choice GOval, counter with the number, all the bricks
+	 */
+	private void deleteBeforeRestart() {
+		remove(choice);
+		choice = null;
+		remove(backCounter);
+		backCounter = null;
+		removeBricks();
+		brick = null;
+		counter = NBRICKS_PER_ROW*NBRICK_ROWS - 1; // something wrong with the counter. not always works correctly
+		NTURNS = 3; // put the number of lives back
+	}
+	
+	/**
+	 * welcomes and asks to click to start
+	 */
+	private void startingScreen() {
+		this.setSize(APPLICATION_WIDTH, APPLICATION_HEIGHT);
+		
+		Color myStart = new Color(221, 202, 232); // color for the click to start sign
+		
+		start = new GRect (APPLICATION_WIDTH/4, APPLICATION_HEIGHT/4, APPLICATION_WIDTH/2, APPLICATION_HEIGHT/2);
+		start.setColor(myStart);
+		start.setFilled(true);
+		start.setFillColor(myStart);
+		add(start);
+		
+		GLabel startSign = new GLabel ("CLICK");
+		GLabel startSign2 = new GLabel ("TO START");
+		startSign.setFont("SansSerif-40");
+		startSign2.setFont("SansSerif-40");
+		add(startSign, (APPLICATION_WIDTH - startSign.getWidth())/2, APPLICATION_HEIGHT/2 - 20);
+		add(startSign2, (APPLICATION_WIDTH - startSign2.getWidth())/2, APPLICATION_HEIGHT/2 + 50);
+		waitForClick();
+		start = null;
+		removeAll();
+		pause(200);
+	}
+
+	/**
+	 * Setup bricks and a separation line
+	 */
+	private void setup() {
+		bricks();
+
+		separation = new GLine(WIDTH + 3, 0, WIDTH + 3, HEIGHT + 3); // separation line between game and controller
+		separation.setColor(Color.GRAY);
+		add(separation);
+	}
+	
+	/**
+	 * puts all the bricks depending on the constants, in the doubled cycle
+	 */
+	private void bricks() {
+		for (int i = 0; i < NBRICK_ROWS; i++) {
+			for (int j = 0; j < NBRICKS_PER_ROW; j++) {
+				int x = j * (BRICK_WIDTH + BRICK_SEP);
+				int y = i * (BRICK_HEIGHT + BRICK_SEP) + BRICK_Y_OFFSET;
+				brick = new GRect(BRICK_WIDTH, BRICK_HEIGHT); // Our brick
+				brick.setFilled(true);
+				if (i == 0 || i == 1)
+					brick.setColor(Color.RED);
+				else if (i == 2 || i == 3)
+					brick.setColor(Color.ORANGE);
+				else if (i == 4 || i == 5)
+					brick.setColor(Color.YELLOW);
+				else if (i == 6 || i == 7)
+					brick.setColor(Color.GREEN);
+				else
+					brick.setColor(Color.CYAN);
+				add(brick, x, y);
+			}
+		}
+	}
+	
+	/**
+	 * sets up paddle and ball
+	 */
+	private void setupPaddleAndBall() {
+		if (paddle == null && ball == null) {
+			paddle = new GRect(PADDLE_WIDTH, PADDLE_HEIGHT); // Our paddle
+			paddle.setFilled(true);
+			add(paddle, (WIDTH - PADDLE_WIDTH) / 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET);
+			
+			ball = new GOval(BALL_RADIUS * 2, BALL_RADIUS * 2); // ball in the middle of the game field
+			ball.setColor(Color.MAGENTA);
+			ball.setFilled(true);
+			ball.setFillColor(Color.MAGENTA);
+			add(ball, (WIDTH - BALL_RADIUS) / 2, (HEIGHT - BALL_RADIUS) / 2);
+		}
+		
+	}
+	
+	/**
+	 * adds elements from the sideBar
+	 * levels, counter of bricks, 3 lives, restart button
+	 */
+	private void sideBar() {
+		levels();
+	
+		backCounter2 = new GLabel("Bricks left");
+		backCounter2.setFont("SansSerif-16");
+		backCounter2.setColor(myCounter);
+		add(backCounter2, WIDTH + (APPLICATION_WIDTH - WIDTH)/2 - backCounter2.getWidth()/2, 150);
+		
+		backCounter = new GLabel("");
+		backCounter.setFont("SansSerif-18");
+		backCounter.setColor(myCounter);
+		add(backCounter, 490, 180);
+		
+		lives();
+		
+		restart();
+	}
+	
+	/**
+	 * objects to create a level choice bar
+	 */
+	private void levels() {
+		Color myBlue = new Color(20, 103, 204);
+		
+		levelBanner = new GLabel("CHOOSE THE LEVEL");
+		levelBanner.setFont("SansSerif-16");
+		levelBanner.setColor(myBlue);
+		xCoordBox = (int) (WIDTH + (APPLICATION_WIDTH - WIDTH)/2 - levelBanner.getWidth()/2);
+		add(levelBanner, xCoordBox, 50);
+		
+		level1 = new GRect(xCoordBox, 70, checkBoxSize, checkBoxSize);
+		level1.setColor(myBlue);
+		level1.setFilled(true);
+		level1.setFillColor(myBlue);
+		add(level1);
+		
+		level2 = new GRect(xCoordBox + levelBanner.getWidth()/2 - checkBoxSize/2, 70, checkBoxSize, checkBoxSize);
+		level2.setColor(myBlue);
+		level2.setFilled(true);
+		level2.setFillColor(myBlue);
+		add(level2);
+		
+		level3 = new GRect(xCoordBox + levelBanner.getWidth() - checkBoxSize, 70, checkBoxSize, checkBoxSize);
+		level3.setColor(myBlue);
+		level3.setFilled(true);
+		level3.setFillColor(myBlue);
+		add(level3);
+		
+		GLabel one = new GLabel("1");
+		GLabel two = new GLabel("2");
+		GLabel three = new GLabel("3");
+		add(one, level1.getX() + (checkBoxSize - one.getWidth())/2, 110);
+		add(two, level2.getX() + (checkBoxSize - two.getWidth())/2, 110);
+		add(three, level3.getX() + (checkBoxSize - three.getWidth())/2, 110);
+	}
+	
+	/**
+	 * 3 images to show the lives bar
+	 */
+	private void lives() {
+		life1 = new GImage("heart.png");
+		life1.scale(0.2);
+		add(life1, xCoordBox, 500);
+		
+		life2 = new GImage("heart.png");
+		life2.scale(0.2);
+		add(life2, xCoordBox + levelBanner.getWidth()/2 - life2.getWidth()/2, 500);
+		
+		life3 = new GImage("heart.png");
+		life3.scale(0.2);
+		add(life3, xCoordBox + levelBanner.getWidth() - life2.getWidth(), 500);
+	}
+	
+	/**
+	 * objects to display when gameOver() == 1
+	 */
+	private void victory() {
+		rVictory = new GRect(WIDTH/2, HEIGHT/6);
+		rVictory.setColor(Color.GREEN);
+		rVictory.setFilled(true);
+		rVictory.setFillColor(Color.GREEN);
+		add(rVictory, WIDTH/4, (HEIGHT - rVictory.getHeight())/2);
+
+		victory = new GLabel("YOU WON!");
+		victory.setFont(Font.decode("San-Serif-35"));
+		victory.setColor(Color.WHITE);
+		add(victory, (WIDTH-victory.getWidth())/2, (HEIGHT + victory.getAscent())/2);
+	}
+	
+	/**
+	 * objects to display when gameOver() == -1
+	 */
+	private void loss() {
+		rLoss = new GRect(WIDTH/2, HEIGHT/6);
+		rLoss.setColor(Color.RED);
+		rLoss.setFilled(true);
+		rLoss.setFillColor(Color.RED);
+		add(rLoss, WIDTH/4, (HEIGHT - rLoss.getHeight())/2);
+
+		l = "YOU LOST!" + "\n" + "Try harder!";
+		loss = new GLabel("YOU LOST!");
+		loss.setFont(Font.decode("San-Serif-28"));
+		loss.setColor(Color.WHITE);
+		add(loss, (WIDTH - loss.getWidth())/2, (HEIGHT - loss.getAscent())/2);
+		GLabel loss2 = new GLabel("Try harder!");
+		loss2.setFont(Font.decode("San-Serif-28"));
+		loss2.setColor(Color.WHITE);
+		add(loss2, (WIDTH - loss2.getWidth())/2, loss.getY() + loss.getAscent());
+	}
+
+	/**
+	 * restart button and restart text
+	 */
+	private void restart() {
+		if (restart == null) {
+			restart = new GRect((APPLICATION_WIDTH - WIDTH)/3*2, 35);
+			restart.setColor(Color.ORANGE);
+			restart.setFilled(true);
+			restart.setFillColor(Color.ORANGE);
+			add(restart, WIDTH + (APPLICATION_WIDTH - WIDTH)/2 - restart.getWidth()/2 , 550);
+
+			rest = new GLabel("RESTART");
+			rest.setFont(Font.decode("San-Serif-25"));
+			rest.setColor(Color.RED);
+			add(rest, restart.getX() + (restart.getWidth()-rest.getWidth())/2, restart.getY() +(restart.getHeight()+rest.getHeight())/2 - 5);
+		}
+	}
+
+	/**
+	 * calculate speed for the ball, using random;
+	 * there are only 4 directions
+	 */
+	private void ballStartMove() {
+		xSpeed0 = ballSpeed/2;
+		ySpeed0 = xSpeed0;
+		if (rgen.nextBoolean(0.5)) // random sign for X speed
+			xSpeed0 = -xSpeed0;
+		if (rgen.nextBoolean(0.5)) // -"- for Y speed
+			ySpeed0 = -ySpeed0;
+		
+	}
+	
+	/**
+	 * shows, what level is chosen (by click), and determines the circumstances for the level
+	 */
+	private void chooseTheLevel() {
+		waitForClick();
+		if (choice.getX() == level1.getX() + checkBoxSize/4) {
+			PAUSE = 7;
+		} else if (choice.getX() == level2.getX() + checkBoxSize/4) {
+			PAUSE = 4;
+		} else if(choice.getX() == level3.getX() + checkBoxSize/4) {
+			PAUSE = 4;
+			PADDLE_WIDTH = 30;
+		}
+		
+	}
+
+	/**
+	 * one movement of the ball
+	 */
+	private void ballMove() {
+		ball.move(xSpeed0, ySpeed0);
+		pause(PAUSE);
+	}
+
+	/**
+	 * method that comprises all the collision methods
+	 */
+	private void checkForCollisions() {
+		ballOffScreen();
+		collideWithPaddle(); 
+		collideWithBrick(); // not wall not paddle
+	}
+
+	/**
+	 * when the ball collides with one of the walls;
+	 * when the ball is out of the screen (ball.getY() > HEIGHT) - delete 1 life and mini-restart
+	 */
+	private void ballOffScreen() {
+		if (ball.getX() < 0 || ball.getX() + ball.getWidth() >= WIDTH) {
+			xSpeed0 *= -1; // change the X speed to the opposite
+			if (ball.getX() < 0) {
+				ball.move(-ball.getX(), 0); // put the ball back to the edge of the board (X)
+			} else if (ball.getX() + ball.getWidth() >= WIDTH) {
+				double diff = BALL_RADIUS * 2 - (WIDTH - ball.getX());
+				ball.move(-diff, 0); // put the ball back to the edge of the board (X)
+			}
+		} else if (ball.getY() < 0) {
+			ySpeed0 *= -1;
+			ball.move(-ball.getY(), 0); // put the ball back to the edge of the board (Y)
+		} else if (ball.getY() > HEIGHT) {
+			NTURNS--;
+			if(NTURNS == 2) {
+				remove(life3);
+				life3 = null; // life should be removed from the screen and then nulled
+				removeBallAndPaddle();
+				pause(500); // pause between life loss and next life
+				wholeGame();
+			} else if(NTURNS == 1) {
+				remove(life2);
+				life2 = null;
+				removeBallAndPaddle();
+				pause(500);
+				wholeGame();
+			} else if (NTURNS == 0) {
+				removeBallAndPaddle();
+				remove(life1);
+				life1 = null;
+				// whole game is not called, because game is ended -> another method
+			}
+		}
+	}
+	
+	/**
+	 * removes ball and paddle only;
+	 * before all the restarts;
+	 */
+	private void removeBallAndPaddle() {
+		remove(ball);
+		ball = null;
+		remove(paddle);
+		paddle = null;
+	}
+	
+	/**
+	 * to define all the possible ends of the game
+	 * 
+	 * @return 0 - when game is not ended
+	 * @return 1 - when the player won
+	 * @return -1 - when the player failed
+	 * 
+	 */
+	private int gameOver() {
+		//return ((ball.getY() >= getHeight() - ball.getHeight())||(counter == NBRICKS_PER_ROW*NBRICK_ROWS));
+		if (counter == 0) {
+			return 1;
+		} else if (NTURNS <= 0) {
+			return -1;
+		} else return 0;
+	}
+
+	/**
+	 * there are 8 dots to check for collision
+	 * @return object - what is the collided object
+	 */
+	private GObject getCollidingObjectPaddleOrBrick() {
+		GObject collObj1 = getElementAt(ball.getX(), ball.getY());  // up left corner
+		GObject collObj2 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY()); // bottom left corner
+		GObject collObj3 = getElementAt(ball.getX(), ball.getY() + 2*BALL_RADIUS); // bottom right corner
+		GObject collObj4 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY() + 2*BALL_RADIUS); // up right
+		GObject collObj5 = getElementAt(ball.getX() + BALL_RADIUS, ball.getY());
+		GObject collObj6 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY() + BALL_RADIUS);
+		GObject collObj7 = getElementAt(ball.getX() + BALL_RADIUS, ball.getY() + 2*BALL_RADIUS);
+		GObject collObj8 = getElementAt(ball.getX(), ball.getY() + BALL_RADIUS);
+		
+		if(collObj1 != null)
+			return collObj1;
+		else if(collObj2 != null)
+			return collObj2;
+		else if(collObj3 != null)
+			return collObj3;
+		else if(collObj4 != null)
+			return collObj4;
+		else if(collObj5 != null && collObj5 != ball)
+			return collObj5;
+		else if(collObj6 != null && collObj6 != ball)
+			return collObj6;
+		else if(collObj7 != null && collObj7 != ball)
+			return collObj7;
+		else if(collObj8 != null && collObj8 != ball)
+			return collObj8;
+		return null;
+	}
+
+	/**
+	 * collision with a paddle - change the ySpeed
+	 */
+	private void collideWithPaddle() {
+		if(ball!=null) {
+			GObject collider = getCollidingObjectPaddleOrBrick();
+			if(collider==paddle) {
+				double oneThird;
+				if(xSpeed0 > 0) oneThird = ball.getX() + BALL_RADIUS*3 - paddle.getX();
+				else oneThird = ball.getX() + BALL_RADIUS - paddle.getX();
+				/*if (oneThird >= 0 && oneThird <= PADDLE_WIDTH/3) {
+				ySpeed0 *= -1;
+				xSpeed0 *= -1;
+				ySpeed0 += -0.5;
+				xSpeed0 -= -0.5;
+			} else if (oneThird > PADDLE_WIDTH/3 && oneThird <= PADDLE_WIDTH/3*2) {
+				ySpeed0 *= -1;
+			} else if (oneThird > PADDLE_WIDTH/3*2 && oneThird <= PADDLE_WIDTH) {
+				xSpeed0 *= -1;
+				ySpeed0 *= -1;
+				ySpeed0 += 0.5;
+				xSpeed0 -= 0.5;
+			} else*/ ySpeed0 *= -1;
+			//ballMove();	
+			}
+		}
+	}
+	
+	/**
+	 * if a collision with the brick - delete it, change the counter, change the speed
+	 */
+	private void collideWithBrick() {
+		if(ball!=null) {
+			GObject collider = getCollidingObjectPaddleOrBrick();
+			if (collider != null && collider != paddle){ // collision with the brick is unique
+				remove(collider);
+				counter--;
+				backCounter.setLabel("" + counter);
+				ySpeed0 *= -1;
+				ballMove();
+			}
+		}
+	}
+	
+	/**
+	 * for the mouse listener;
+	 * controls choice, restart, paddle movement
+	 */
+	public void mousePressed(MouseEvent e) {
+		last = new GPoint(e.getPoint());
+		gobj = getElementAt(last);
+		
+		if (choice == null) {
+			if(getElementAt(e.getX(), e.getY()) == level1) {
+				addChoice();
+				add(choice, level1.getX() + checkBoxSize/4, level1.getY() + checkBoxSize/4);
+			} else if(getElementAt(e.getX(), e.getY()) == level2) {
+				addChoice();
+				add(choice, level2.getX() + checkBoxSize/4, level2.getY() + checkBoxSize/4);
+			}
+			else if(getElementAt(e.getX(), e.getY()) == level3) {
+				addChoice();
+				add(choice, level3.getX() + checkBoxSize/4, level3.getY() + checkBoxSize/4);
+			}
+		}
+		
+		if (gameOver() == -1 || gameOver() == 1) {
+			GObject obj = getElementAt(e.getX(), e.getY());
+			if(obj == rest) {
+				restart.setFillColor(myGreen);
+				restart.setColor(myGreen);
+				nOfRestarts ++;
+			}
+		}
+	}
+	
+	/**
+	 * remove the bricks before the restart
+	 */
+	private void removeBricks() {
+		for (int i = 0; i < NBRICK_ROWS; i++) {
+			for (int j = 0; j < NBRICKS_PER_ROW; j++) {
+				int x = j * (BRICK_WIDTH + BRICK_SEP);
+				int y = i * (BRICK_HEIGHT + BRICK_SEP) + BRICK_Y_OFFSET;
+				GObject obj = getElementAt(x, y);
+				if (obj != null) { // only existing bricks should be deleted
+					remove(obj);
+					obj = null;
+				}
+			}
+		}
+	}
+
+	/**
+	 * characteristics for the choice GOval
+	 */
+	private void addChoice() {
+		choice = new GOval(checkBoxSize/2, checkBoxSize/2);
+		choice.setColor(Color.WHITE);
+		choice.setFilled(true);
+		choice.setFillColor(Color.WHITE);
+	}
+
+	/**
+	 * used to move the paddle
+	 */
+	public void mouseDragged(MouseEvent e) {
+		if (gobj == paddle && ball != null) { // you can't move the paddle if you failed
+			if (paddle.getX() > 0 && paddle.getX() < WIDTH - PADDLE_WIDTH) {
+				gobj.move(e.getX() - last.getX(), 0);
+				last = new GPoint(e.getPoint());
+			} else if (e.getX() <= PADDLE_WIDTH) {
+				gobj.setLocation(0, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET);
+				gobj.move(1, 0);
+			} else {
+				gobj.setLocation(WIDTH - PADDLE_WIDTH - 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET);
+				gobj.move(-1, 0);
+			}
+		}
+	}
+
+	
+	private String l; // ??
+	
+	private GRect rLoss; // GRect of the loss sign
+	private GLabel loss; // words on the loss sign
+	private GRect rVictory; // GRect of the victory sign
+	private GLabel victory; // words on the victory sign
+	
+	private Color myGreen = new Color(143, 181, 147); // color for the restart button
+	private Color myCounter = new Color(173, 48, 14); // color for 2 counter signs
+	
+	private GRect start; // the very first sign
+	
+	private GLabel levelBanner; // choose the level
+	private GRect level1; // first GRect for the 1st level
+	private GRect level2; // second GRect for the 2nd level
+	private GRect level3; // third GRect for the 3rd level
+	private GOval choice; // small oval to mark the chosen level
+	
+	private GImage life1; // first heart-life image
+	private GImage life2; // second
+	private GImage life3; // third
+	
+	
+	private GLabel backCounter; // changing number
+	private GLabel backCounter2; // non-changeable counter sign
+	
+	private GOval ball; // ball which is used to ruin bricks
+	private GRect brick; // one of the bricks
+	private GRect paddle; // GRect in the bottom of the game field to reflect the ball
+	private GPoint last; // point to monitor the paddle
+	private GObject gobj; // object at where the mouse clicked
+	
+	private GLine separation; // separation line between game zone and side bar
+	private GRect restart; // restart button
+	private GLabel rest; // restart sign
+	
+	private static int counter = NBRICKS_PER_ROW*NBRICK_ROWS;
+
+}
