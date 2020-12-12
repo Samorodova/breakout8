@@ -227,7 +227,7 @@ public class Breakout extends GraphicsProgram {
 			GObject collider = getCollidingObjectPaddleOrBrick();
 			if (collider != null && collider != paddle){
 				remove(collider);
-				counter++;
+				counter--;
 				ySpeed0 *= -1;
 				ballMove();
 			}
@@ -260,7 +260,7 @@ public class Breakout extends GraphicsProgram {
 	private GPoint last;
 	private GObject gobj;
 	private GLine separation;
-	private static int counter = 0;
+	private static int counter = NBRICKS_PER_ROW*NBRICK_ROWS + 1;
 
 }
  
