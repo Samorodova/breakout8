@@ -17,15 +17,16 @@ import java.awt.event.*;
 
 public class Breakout extends GraphicsProgram {
 
-private RandomGenerator rgen = RandomGenerator.getInstance();
+
+	private RandomGenerator rgen = RandomGenerator.getInstance();
 
 	/** Width and height of application window in pixels */
-	public static final int APPLICATION_WIDTH = 400;
+	public static final int APPLICATION_WIDTH = 600;
 	public static final int APPLICATION_HEIGHT = 600;
 
 	/** Dimensions of game board (usually the same) */
-	private static final int WIDTH = APPLICATION_WIDTH;
-	private static final int HEIGHT = APPLICATION_HEIGHT;
+	private static final int WIDTH = 400;
+	private static final int HEIGHT = 600;
 
 	/** Dimensions of the paddle */
 	private static final int PADDLE_WIDTH = 60;
@@ -50,19 +51,19 @@ private RandomGenerator rgen = RandomGenerator.getInstance();
 	private static final int BRICK_HEIGHT = 8;
 
 	/** Radius of the ball in pixels */
-	private static final int BALL_RADIUS = 40;
+	private static final int BALL_RADIUS = 15;
 
 	/** Offset of the top brick row from the top */
 	private static final int BRICK_Y_OFFSET = 70;
 
 	/** Number of turns */
 	private static final int NTURNS = 3;
-	
-	private static double ballSpeed = 26;
-	
-	/** pause between changes*/
-	private static final int PAUSE = 50;
-	
+
+	private static double ballSpeed = 6; // it's better not to change the speed,
+
+	/** pause between changes */
+	private static int PAUSE = 30;
+
 	private static double xSpeed0 = 0;
 	private static double ySpeed0 = ballSpeed - xSpeed0;
 
@@ -74,11 +75,11 @@ private RandomGenerator rgen = RandomGenerator.getInstance();
 		/* You fill this in, along with any subsidiary methods */
 		setup();
 		ballStartMove();
+		pause(900); // pause before the ball starts moving
 		while (true) {
 			ballMove();
 			checkForCollisions();
 		}
-		
 	}
 
 	/**
@@ -109,62 +110,121 @@ private RandomGenerator rgen = RandomGenerator.getInstance();
 		paddle = new GRect(PADDLE_WIDTH, PADDLE_HEIGHT); // Our paddle
 		paddle.setFilled(true);
 		add(paddle, (WIDTH - PADDLE_WIDTH) / 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET);
-		
-		ball = new GOval(BALL_RADIUS, BALL_RADIUS);
+
+		ball = new GOval(BALL_RADIUS * 2, BALL_RADIUS * 2); // ball in the middle of the screen
 		ball.setColor(Color.MAGENTA);
 		ball.setFilled(true);
 		ball.setFillColor(Color.MAGENTA);
-		add(ball, (APPLICATION_WIDTH - BALL_RADIUS)/2, (APPLICATION_HEIGHT - BALL_RADIUS)/2);
+		add(ball, (WIDTH - BALL_RADIUS) / 2, (HEIGHT - BALL_RADIUS) / 2);
+
+		separation = new GLine(WIDTH + 3, 0, WIDTH + 3, HEIGHT + 3); // separation line between game and controller
+		separation.setColor(Color.GRAY);
+		add(separation);
 
 		addMouseListeners();
 	}
-	
+
 	private void ballStartMove() {
 		xSpeed0 = rgen.nextDouble(1.0, ballSpeed);
-		if(rgen.nextBoolean(0.5)) xSpeed0 = -xSpeed0;
-		if(rgen.nextBoolean(0.5)) ySpeed0 = -ySpeed0;
-		if(rgen.nextBoolean(0.5)) ballSpeed = -ballSpeed;
+		if (rgen.nextBoolean(0.5))
+			ballSpeed = -ballSpeed;
+		if (rgen.nextBoolean(0.5)) // random sign for X speed
+			xSpeed0 = -xSpeed0;
+		if (rgen.nextBoolean(0.5)) // -"- for Y speed
+			ySpeed0 = -ySpeed0;
+		
 	}
-	
+
 	private void ballMove() {
 		ball.move(xSpeed0, ySpeed0);
 		pause(PAUSE);
 	}
-	
+
 	private void checkForCollisions() {
 		ballOffScreen();
-		ballCollision();
+		collideWithSomething(); // not wall
+		// ballCollision();
 	}
 
+	/**
+	 * when the ball collides with one of the walls (except of bottom)
+	 */
 	private void ballOffScreen() {
 		if (ball.getX() < 0 || ball.getX() + ball.getWidth() >= WIDTH) {
-			xSpeed0 *= -1;
-			//double diff = ball.getX() - (WIDTH - BALL_RADIUS); 
-			//ball.move(diff, 0);
+			xSpeed0 *= -1; // change the X speed to the opposite
+			if (ball.getX() < 0) {
+				ball.move(-ball.getX(), 0); // put the ball back to the edge of the board (X)
+			} else if (ball.getX() + ball.getWidth() >= WIDTH) {
+				double diff = BALL_RADIUS * 2 - (WIDTH - ball.getX());
+				ball.move(-diff, 0); // put the ball back to the edge of the board (X)
+			}
 		} else if (ball.getY() < 0) {
 			ySpeed0 *= -1;
-			//double diff = ball.getY() - (HEIGHT - BALL_RADIUS); 
-			//ball.move(0, diff);
+			ball.move(-ball.getY(), 0); // put the ball back to the edge of the board (Y)
+		} else if (ball.getY() > HEIGHT) {
+			remove(ball); // if the ball was not reflected by paddle - it is removed
+			ball = null;
 		}
 	}
+	
+	/**
+	 * to define all the possible ends of the game
+	 * 
+	 * @return 0 - when game is not ended
+	 * @return 1 - when the player won
+	 * @return -1 - when the player failed
+	 * 
+	 */
+	private int gameOver() {
+		//return ((ball.getY() >= getHeight() - ball.getHeight())||(counter == NBRICKS_PER_ROW*NBRICK_ROWS));
+		return 0;
+	}
 
-	private void ballCollision() {
-		// 4 point where to check the collision using getCollidingObject()
+	/**
+	 * 
+	 * @return object - what is the collided object
+	 */
+	private GObject getCollidingObjectPaddleOrBrick() {
+			GObject collObj1 = getElementAt(ball.getX(), ball.getY());  // up left corner
+			GObject collObj2 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY()); // bottom left corner
+			GObject collObj3 = getElementAt(ball.getX(), ball.getY() + 2*BALL_RADIUS); // bottom right corner
+			GObject collObj4 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY() + 2*BALL_RADIUS); // up right
+			
+			if(collObj1 != null)
+				return collObj1;
+			else if(collObj2 != null)
+				return collObj2;
+			else if(collObj3 != null)
+				return collObj3;
+			else if(collObj4 != null)
+				return collObj4;
+			return null;
+	}
+
+	private void collideWithSomething() {
+		if(ball!=null) {
+			GObject collider = getCollidingObjectPaddleOrBrick();
+			if(collider==paddle) {
+				ySpeed0 *= -1;
+				ballMove();
+				//має відбитись від ракетки
+			} else if (collider != null /*&& collider != separation*/){
+				remove(collider);
+				counter++;
+				ySpeed0 *= -1;
+				ballMove();
+			}
+		}
+		
 	}
 	
-	private GObject getCollidingObject(int x, int y) {
-		GObject object = getElementAt(x, y);
-		if (object != null) return object;
-		else return null;
-	}
-
 	public void mousePressed(MouseEvent e) {
 		last = new GPoint(e.getPoint());
 		gobj = getElementAt(last);
 	}
 
 	public void mouseDragged(MouseEvent e) {
-		if (gobj == paddle) {
+		if (gobj == paddle && ball != null) { // you can't move the paddle if you failed
 			if (paddle.getX() > 0 && paddle.getX() < WIDTH - PADDLE_WIDTH) {
 				gobj.move(e.getX() - last.getX(), 0);
 				last = new GPoint(e.getPoint());
@@ -177,15 +237,14 @@ private RandomGenerator rgen = RandomGenerator.getInstance();
 			}
 		}
 	}
-	
-	
+
 	private GOval ball;
 	private GRect brick;
 	private GRect paddle;
 	private GPoint last;
 	private GObject gobj;
-
- 
+	private GLine separation;
+	private static int counter = 0;
 }
  
 
