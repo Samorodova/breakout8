@@ -59,7 +59,7 @@ public class Breakout extends GraphicsProgram {
 	/** Number of turns */
 	private static final int NTURNS = 3;
 
-	private static double ballSpeed = 6; // it's better not to change the speed,
+	private static double ballSpeed = 3; // it's better not to change the speed,
 
 	/** pause between changes */
 	private static int PAUSE = 30;
