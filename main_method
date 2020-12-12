@@ -189,6 +189,10 @@ public class Breakout extends GraphicsProgram {
 			GObject collObj2 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY()); // bottom left corner
 			GObject collObj3 = getElementAt(ball.getX(), ball.getY() + 2*BALL_RADIUS); // bottom right corner
 			GObject collObj4 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY() + 2*BALL_RADIUS); // up right
+			GObject collObj5 = getElementAt(ball.getX() + BALL_RADIUS, ball.getY());
+			GObject collObj6 = getElementAt(ball.getX() + 2*BALL_RADIUS, ball.getY() + BALL_RADIUS);
+			GObject collObj7 = getElementAt(ball.getX() + BALL_RADIUS, ball.getY() + 2*BALL_RADIUS);
+			GObject collObj8 = getElementAt(ball.getX(), ball.getY() + BALL_RADIUS);
 			
 			if(collObj1 != null)
 				return collObj1;
@@ -198,6 +202,15 @@ public class Breakout extends GraphicsProgram {
 				return collObj3;
 			else if(collObj4 != null)
 				return collObj4;
+			else if(collObj5 != null)
+				return collObj5;
+			else if(collObj6 != null)
+				return collObj6;
+			else if(collObj7 != null)
+				return collObj7;
+			else if(collObj8 != null)
+				return collObj8;
+
 			return null;
 	}
 
